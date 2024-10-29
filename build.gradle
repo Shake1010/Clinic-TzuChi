@@ -1,0 +1,51 @@
+plugins {
+  id 'java'
+  id 'application'
+  id 'org.openjfx.javafxplugin' version '0.0.13'
+  id 'org.beryx.jlink' version '2.25.0'
+}
+
+group 'com.tzuchi'
+version '1.0-SNAPSHOT'
+
+repositories {
+  mavenCentral()
+}
+
+java {
+  sourceCompatibility = '17'
+  targetCompatibility = '17'
+}
+
+application {
+  mainModule = 'com.tzuchi.clinicroomsystem'
+  mainClass = 'com.tzuchi.clinicroomsystem.ClinicRoomSystem'
+}
+
+javafx {
+  version = '17.0.2'
+  modules = ['javafx.controls']
+}
+
+dependencies {
+  // Jackson for JSON processing
+  implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+
+  implementation 'com.fasterxml.jackson.core:jackson-annotations:2.14.2'
+  implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+
+  // Testing dependencies
+  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+}
+
+test {
+  useJUnitPlatform()
+}
+
+jlink {
+  options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+  launcher {
+    name = 'ClinicRoomSystem'
+  }
+}
