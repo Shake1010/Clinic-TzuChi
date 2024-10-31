@@ -19,6 +19,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.*;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.MediaView;
+import java.io.File;
+import javafx.stage.FileChooser;
 
 public class ClinicRoomSystem extends Application {
     private static final String BASE_URL = "http://localhost:8080/api";
@@ -29,7 +34,8 @@ public class ClinicRoomSystem extends Application {
 
     private final Map<String, VBox> queueDisplays = new HashMap<>();
     private final Map<String, Label> latestNumberLabels = new HashMap<>();
-
+    private MediaPlayer mediaPlayer;
+    private MediaView mediaView;
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Tzu Chi Clinic Room System");
@@ -63,18 +69,23 @@ public class ClinicRoomSystem extends Application {
         VBox videoSection = new VBox();
         videoSection.setPrefWidth(800);
         videoSection.setStyle("""
-        -fx-border-color: #2d5d7b;
-        -fx-border-width: 2;
-        -fx-background-color: #f0f0f0;
-        """);
+    -fx-border-color: #2d5d7b;
+    -fx-border-width: 2;
+    -fx-background-color: #f0f0f0;
+    """);
 
-        Label videoPlaceholder = new Label("影像顯示 / Video Display");
-        videoPlaceholder.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-        videoPlaceholder.setAlignment(Pos.CENTER);
-        videoPlaceholder.setMaxWidth(Double.MAX_VALUE);
-        videoPlaceholder.setMaxHeight(Double.MAX_VALUE);
-        VBox.setVgrow(videoPlaceholder, Priority.ALWAYS);
-        videoSection.getChildren().add(videoPlaceholder);
+        // Setup video components
+        mediaView = new MediaView();
+        mediaView.setFitWidth(780);
+        mediaView.setFitHeight(870);
+        mediaView.setPreserveRatio(true);
+
+        // Load video directly with path
+        loadAndPlayVideo("C:\\Users\\tina_\\Desktop\\TzuChiVideo\\【名人蔬食】甘佳鑫 茹素的力量.mp4");  // Replace this with your actual video path
+
+        // Add components to video section
+        videoSection.getChildren().add(mediaView);
+        videoSection.setAlignment(Pos.CENTER);
 
         mainLayout.getChildren().addAll(queuesSection, videoSection);
         HBox.setHgrow(videoSection, Priority.ALWAYS);
@@ -363,7 +374,55 @@ public class ClinicRoomSystem extends Application {
         alert.setContentText(message);
         alert.showAndWait();
     }
+    private void selectAndPlayVideo() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select Video File");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Video Files", "*.mp4", "*.avi", "*.mov")
+        );
 
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile != null) {
+            loadAndPlayVideo(selectedFile.getAbsolutePath());
+        }
+    }
+
+    private void loadAndPlayVideo(String videoPath) {
+        try {
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+            }
+
+            File videoFile = new File(videoPath);
+            Media media = new Media(videoFile.toURI().toString());
+            mediaPlayer = new MediaPlayer(media);
+            mediaView.setMediaPlayer(mediaPlayer);
+
+            mediaPlayer.setAutoPlay(true);
+            mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE); // Loop the video
+
+            mediaPlayer.setOnError(() -> {
+                String errorMessage = mediaPlayer.getError().getMessage();
+                showError("Video Error", "Error playing video: " + errorMessage);
+            });
+
+            mediaPlayer.play();
+
+        } catch (Exception e) {
+            showError("Video Error", "Error loading video: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Add this method to clean up resources when the application closes
+    @Override
+    public void stop() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.dispose();
+        }
+    }
     public static void main(String[] args) {
         launch(args);
     }
