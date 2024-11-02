@@ -218,7 +218,83 @@ public class ClinicRoomSystem extends Application {
     }
 
     private void returnNumber(String button) {
-        System.out.println("Return button pressed: " + button);
+        String column = switch (button) {
+            case "4" -> "5";  // Button 4 for row 5
+            case "7" -> "8";  // Button 7 for row 8
+            default -> "";
+        };
+
+        if (!column.isEmpty()) {
+            String queueEndpoint = BASE_URL + "/row" + column;
+
+            // First get the current queue state
+            sendHttpRequest(queueEndpoint, "GET", queueResponse -> {
+                try {
+                    JsonNode root = OBJECT_MAPPER.readTree(queueResponse);
+                    JsonNode patients = root.get("patients");
+
+                    if (patients != null && patients.isArray()) {
+                        // Find the patient with highest number that is not in queue clinic
+                        JsonNode lastCalledPatient = null;
+                        int highestNumber = -1;
+
+                        for (JsonNode patient : patients) {
+                            if (!patient.get("inQueueClinic").asBoolean()) {  // Changed to inQueueClinic
+                                String patientId = patient.get("patientId").asText();
+                                // Extract number from patient ID (e.g., "P2" -> 2)
+                                int currentNumber = Integer.parseInt(patientId.substring(1));
+                                if (currentNumber > highestNumber) {
+                                    highestNumber = currentNumber;
+                                    lastCalledPatient = patient;
+                                }
+                            }
+                        }
+
+                        if (lastCalledPatient != null) {
+                            String patientId = lastCalledPatient.get("patientId").asText();
+                            // Updated endpoint to use the new clinic withdraw endpoint
+                            String withdrawEndpoint = BASE_URL + "/withdraw/row" + column + "/clinic?patientId=" + patientId;
+
+                            // Send withdraw request
+                            sendHttpRequest(withdrawEndpoint, "PUT", withdrawResponse -> {
+                                // Refresh queue display after withdrawal
+                                sendHttpRequest(queueEndpoint, "GET", finalResponse -> {
+                                    Platform.runLater(() -> {
+                                        updateQueueDisplay(column, finalResponse);
+                                        // Find the new latest called number
+                                        try {
+                                            JsonNode updatedRoot = OBJECT_MAPPER.readTree(finalResponse);
+                                            JsonNode updatedPatients = updatedRoot.get("patients");
+                                            if (updatedPatients != null && updatedPatients.isArray()) {
+                                                String latestId = "";
+                                                int maxNumber = -1;
+                                                for (JsonNode p : updatedPatients) {
+                                                    if (!p.get("inQueueClinic").asBoolean()) {  // Changed to inQueueClinic
+                                                        String pid = p.get("patientId").asText();
+                                                        int num = Integer.parseInt(pid.substring(1));
+                                                        if (num > maxNumber) {
+                                                            maxNumber = num;
+                                                            latestId = pid;
+                                                        }
+                                                    }
+                                                }
+                                                updateLatestNumber(column, latestId.isEmpty() ? "-" : latestId);
+                                            }
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                    });
+                                });
+                            });
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Platform.runLater(() -> showError("Error",
+                            "Failed to process queue data: " + e.getMessage()));
+                }
+            });
+        }
     }
 
     private void startPeriodicUpdates() {
@@ -247,54 +323,56 @@ public class ClinicRoomSystem extends Application {
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(endpoint))
-                    .timeout(Duration.ofSeconds(10));
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Accept", "application/json");
 
-            if (method.equals("POST")) {
-                requestBuilder.header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.noBody());
+            if (method.equals("PUT")) {
+                requestBuilder.PUT(HttpRequest.BodyPublishers.noBody());
+            } else if (method.equals("POST")) {
+                requestBuilder.POST(HttpRequest.BodyPublishers.noBody());
             } else {
                 requestBuilder.GET();
             }
 
-            requestBuilder.header("Accept", "application/json");
-
             HttpRequest request = requestBuilder.build();
-            System.out.println("Sending " + method + " request to: " + endpoint);
+            System.out.println("Sending " + method + " request to: " + endpoint); // Debug log
 
             HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(response -> {
-                        System.out.println(method + " response from " + endpoint);
-                        System.out.println("Status code: " + response.statusCode());
-                        System.out.println("Response body: " + response.body());
+                        System.out.println("Response status: " + response.statusCode()); // Debug log
+                        System.out.println("Response body: " + response.body()); // Debug log
 
                         if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                            if (response.body() == null || response.body().isEmpty()) {
-                                Platform.runLater(() -> showError("Empty Response",
-                                        "Server returned empty response for: " + endpoint));
-                                return;
-                            }
                             responseHandler.accept(response.body());
                         } else {
-                            Platform.runLater(() -> showError("API Error",
-                                    "Request failed with status: " + response.statusCode() +
-                                            "\nEndpoint: " + endpoint +
-                                            "\nResponse: " + response.body()));
+                            Platform.runLater(() -> {
+                                try {
+                                    JsonNode errorNode = OBJECT_MAPPER.readTree(response.body());
+                                    String errorMessage = errorNode.has("message") ?
+                                            errorNode.get("message").asText() :
+                                            "Request failed with status: " + response.statusCode();
+                                    showError("API Error", errorMessage + "\nEndpoint: " + endpoint);
+                                } catch (Exception e) {
+                                    showError("API Error",
+                                            "Request failed with status: " + response.statusCode() +
+                                                    "\nEndpoint: " + endpoint);
+                                }
+                            });
                         }
                     })
                     .exceptionally(e -> {
-                        System.err.println("Request failed for " + endpoint);
                         e.printStackTrace();
                         Platform.runLater(() -> showError("Connection Error",
                                 "Failed to connect to: " + endpoint + "\nError: " + e.getMessage()));
                         return null;
                     });
         } catch (Exception e) {
-            System.err.println("Error creating request for " + endpoint);
             e.printStackTrace();
             Platform.runLater(() -> showError("Request Error",
                     "Error creating request for: " + endpoint + "\nError: " + e.getMessage()));
         }
     }
+
 
     private void updateLatestNumber(String column, String patientId) {
         try {
@@ -311,6 +389,7 @@ public class ClinicRoomSystem extends Application {
             e.printStackTrace();
         }
     }
+
 
     private void updateQueueDisplay(String column, String responseBody) {
         try {
