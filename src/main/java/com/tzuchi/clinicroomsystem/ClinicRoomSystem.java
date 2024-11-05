@@ -34,6 +34,7 @@ public class ClinicRoomSystem extends Application {
 
     private final Map<String, VBox> queueDisplays = new HashMap<>();
     private final Map<String, Label> latestNumberLabels = new HashMap<>();
+    private final Map<String, Label> categoryStatsLabels = new HashMap<>();
     private MediaPlayer mediaPlayer;
     private MediaView mediaView;
     @Override
@@ -119,10 +120,10 @@ public class ClinicRoomSystem extends Application {
         display.setPrefWidth(190);
         display.setMaxHeight(Double.MAX_VALUE);
         display.setStyle("""
-        -fx-border-color: #2d5d7b;
-        -fx-border-width: 1;
-        -fx-background-color: white;
-        """);
+    -fx-border-color: #2d5d7b;
+    -fx-border-width: 1;
+    -fx-background-color: white;
+    """);
 
         Label headerLabel = new Label("Column " + column);
         headerLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
@@ -143,14 +144,14 @@ public class ClinicRoomSystem extends Application {
 
             String backgroundColor = i < 4 ? "#e6f3ff" : "white";
             lineLabel.setStyle(String.format("""
-            -fx-border-color: #cccccc;
-            -fx-border-width: 0 0 1 0;
-            -fx-padding: 10;
-            -fx-font-size: 16px;
-            -fx-font-weight: bold;
-            -fx-alignment: center;
-            -fx-background-color: %s;
-            """, backgroundColor));
+        -fx-border-color: #cccccc;
+        -fx-border-width: 0 0 1 0;
+        -fx-padding: 10;
+        -fx-font-size: 16px;
+        -fx-font-weight: bold;
+        -fx-alignment: center;
+        -fx-background-color: %s;
+        """, backgroundColor));
 
             queueList.getChildren().add(lineLabel);
         }
@@ -159,10 +160,10 @@ public class ClinicRoomSystem extends Application {
         scrollPane.setFitToWidth(true);
         scrollPane.setPrefHeight(600);
         scrollPane.setStyle("""
-        -fx-background: white;
-        -fx-background-color: white;
-        -fx-border-width: 0;
-        """);
+    -fx-background: white;
+    -fx-background-color: white;
+    -fx-border-width: 0;
+    """);
 
         Label latestLabel = new Label("Latest: -");
         latestLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
@@ -172,10 +173,74 @@ public class ClinicRoomSystem extends Application {
         latestLabel.setStyle("-fx-background-color: #e8e8e8;");
         latestNumberLabels.put(column, latestLabel);
 
-        display.getChildren().addAll(headerLabel, scrollPane, latestLabel);
+        // Create statistics container
+        VBox statsContainer = createStatsLabel(column);
+
+        display.getChildren().addAll(headerLabel, scrollPane, latestLabel, statsContainer);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         return display;
+    }
+    private VBox createStatsLabel(String column) {
+        VBox statsContainer = new VBox(5);
+        statsContainer.setMaxWidth(Double.MAX_VALUE);
+        statsContainer.setPadding(new Insets(5));
+        statsContainer.setStyle("""
+        -fx-background-color: #f5f5f5;
+        -fx-border-color: #2d5d7b;
+        -fx-border-width: 1 0 0 0;
+    """);
+
+        // Create labels for each statistic type
+        Label leftInClinicLabel = new Label(getInitialLeftInClinicText(column));
+        Label totalRegisteredLabel = new Label("Total Registered: 0");
+        Label totalInQueueLabel = column.equals("2") ? new Label("Total in Queue: 0") : null;
+
+        // Style the labels
+        String labelStyle = """
+        -fx-font-size: 12px;
+        -fx-font-weight: bold;
+        -fx-padding: 3;
+        -fx-background-color: white;
+        -fx-border-color: #cccccc;
+        -fx-border-width: 1;
+        -fx-background-radius: 3;
+        -fx-border-radius: 3;
+    """;
+
+        leftInClinicLabel.setStyle(labelStyle);
+        totalRegisteredLabel.setStyle(labelStyle);
+        if (totalInQueueLabel != null) {
+            totalInQueueLabel.setStyle(labelStyle);
+        }
+
+        leftInClinicLabel.setMaxWidth(Double.MAX_VALUE);
+        totalRegisteredLabel.setMaxWidth(Double.MAX_VALUE);
+        if (totalInQueueLabel != null) {
+            totalInQueueLabel.setMaxWidth(Double.MAX_VALUE);
+        }
+
+        statsContainer.getChildren().add(leftInClinicLabel);
+        statsContainer.getChildren().add(totalRegisteredLabel);
+        if (totalInQueueLabel != null) {
+            statsContainer.getChildren().add(totalInQueueLabel);
+        }
+
+        categoryStatsLabels.put(column + "_left", leftInClinicLabel);
+        categoryStatsLabels.put(column + "_total_registered", totalRegisteredLabel);
+        if (totalInQueueLabel != null) {
+            categoryStatsLabels.put(column + "_total_queue", totalInQueueLabel);
+        }
+
+        return statsContainer;
+    }
+    private String getInitialLeftInClinicText(String column) {
+        return switch (column) {
+            case "2" -> "Left - E: 0 | A: 0 | W: 0";
+            case "5" -> "Left P: 0";
+            case "8" -> "Left D: 0";
+            default -> "";
+        };
     }
 
     private void callNumber(String column) {
@@ -372,58 +437,123 @@ public class ClinicRoomSystem extends Application {
     }
 
 
+
     private void updateQueueDisplay(String column, String responseBody) {
         try {
-            System.out.println("Updating display for column " + column + " with response: " + responseBody);
-
             VBox queueDisplay = queueDisplays.get(column);
             if (queueDisplay == null) return;
 
             ScrollPane scrollPane = (ScrollPane) queueDisplay.getChildren().get(1);
             VBox queueList = (VBox) scrollPane.getContent();
 
-            // Clear existing text but maintain highlight colors
+            // Reset all labels
             for (int i = 0; i < queueList.getChildren().size(); i++) {
                 if (queueList.getChildren().get(i) instanceof Label) {
                     Label label = (Label) queueList.getChildren().get(i);
                     String backgroundColor = i < 4 ? "#e6f3ff" : "white";
                     label.setText("");
                     label.setStyle(String.format("""
-                    -fx-border-color: #cccccc;
-                    -fx-border-width: 0 0 1 0;
-                    -fx-padding: 10;
-                    -fx-font-size: 16px;
-                    -fx-font-weight: bold;
-                    -fx-alignment: center;
-                    -fx-background-color: %s;
-                    """, backgroundColor));
+                -fx-border-color: #cccccc;
+                -fx-border-width: 0 0 1 0;
+                -fx-padding: 10;
+                -fx-font-size: 16px;
+                -fx-font-weight: bold;
+                -fx-alignment: center;
+                -fx-background-color: %s;
+                """, backgroundColor));
                 }
             }
 
             JsonNode root = OBJECT_MAPPER.readTree(responseBody);
             JsonNode patients = root.get("patients");
 
+            // Initialize counters
+            Map<Character, Integer> leftInClinic = new HashMap<>();
+            Map<Character, Integer> highestNumbers = new HashMap<>();
+            int totalInQueue = 0;
+
             if (patients != null && patients.isArray()) {
                 int index = 0;
                 for (JsonNode patient : patients) {
-                    if (index >= queueList.getChildren().size()) break;
-
                     String patientId = patient.has("patientId") ? patient.get("patientId").asText() : "";
                     boolean inQueue = patient.has("inQueueClinic") ? patient.get("inQueueClinic").asBoolean(true) : true;
 
-                    if (!patientId.isEmpty() && inQueue) {
-                        Label label = (Label) queueList.getChildren().get(index);
-                        String backgroundColor = index < 4 ? "#e6f3ff" : "white";
-                        label.setText(patientId);
-                        index++;
+                    if (!patientId.isEmpty()) {
+                        // Update display for in-queue patients
+                        if (inQueue) {
+                            if (index < queueList.getChildren().size()) {
+                                Label label = (Label) queueList.getChildren().get(index);
+                                String backgroundColor = index < 4 ? "#e6f3ff" : "white";
+                                label.setText(patientId);
+                                index++;
+                            }
+
+                            // Count in-queue patients
+                            char category = patientId.charAt(0);
+                            leftInClinic.merge(category, 1, Integer::sum);
+                            totalInQueue++;
+                        }
+
+                        // Track highest number for each category
+                        char category = patientId.charAt(0);
+                        try {
+                            int number = Integer.parseInt(patientId.substring(1));
+                            highestNumbers.merge(category, number, Integer::max);
+                        } catch (NumberFormatException e) {
+                            System.err.println("Error parsing number from patientId: " + patientId);
+                        }
                     }
                 }
             }
 
+            // Update statistics labels
+            updateStatisticsLabels(column, leftInClinic, totalInQueue, highestNumbers);
+
         } catch (Exception e) {
             System.err.println("Error updating display for column " + column);
-            System.err.println("Response body: " + responseBody);
             e.printStackTrace();
+        }
+    }
+    private void updateStatisticsLabels(String column, Map<Character, Integer> leftInClinic,
+                                        int totalInQueue, Map<Character, Integer> highestNumbers) {
+        // Update left in clinic label
+        Label leftLabel = categoryStatsLabels.get(column + "_left");
+        if (leftLabel != null) {
+            String leftText = switch (column) {
+                case "2" -> String.format("Left - E: %d | A: %d | W: %d",
+                        leftInClinic.getOrDefault('E', 0),
+                        leftInClinic.getOrDefault('A', 0),
+                        leftInClinic.getOrDefault('W', 0));
+                case "5" -> String.format("Left P: %d", leftInClinic.getOrDefault('P', 0));
+                case "8" -> String.format("Left D: %d", leftInClinic.getOrDefault('D', 0));
+                default -> "";
+            };
+            leftLabel.setText(leftText);
+        }
+
+        // Update total registered label
+        Label totalRegLabel = categoryStatsLabels.get(column + "_total_registered");
+        if (totalRegLabel != null) {
+            int totalRegistered = switch (column) {
+                case "2" -> {
+                    int eTotal = highestNumbers.getOrDefault('E', 0);
+                    int aTotal = highestNumbers.getOrDefault('A', 0);
+                    int wTotal = highestNumbers.getOrDefault('W', 0);
+                    yield eTotal + aTotal + wTotal;
+                }
+                case "5" -> highestNumbers.getOrDefault('P', 0);
+                case "8" -> highestNumbers.getOrDefault('D', 0);
+                default -> 0;
+            };
+            totalRegLabel.setText(String.format("Total Registered: %d", totalRegistered));
+        }
+
+        // Update total in queue label (only for column 2)
+        if (column.equals("2")) {
+            Label totalQueueLabel = categoryStatsLabels.get(column + "_total_queue");
+            if (totalQueueLabel != null) {
+                totalQueueLabel.setText(String.format("Total in Queue: %d", totalInQueue));
+            }
         }
     }
 
