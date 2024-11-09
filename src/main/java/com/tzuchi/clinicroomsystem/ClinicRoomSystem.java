@@ -24,6 +24,7 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import java.io.File;
 import javafx.stage.FileChooser;
+import com.tzuchi.clinicroomsystem.AudioAnnouncementService;
 
 public class ClinicRoomSystem extends Application {
     private static final String BASE_URL = "http://localhost:8080/api";
@@ -37,6 +38,7 @@ public class ClinicRoomSystem extends Application {
     private final Map<String, Label> categoryStatsLabels = new HashMap<>();
     private MediaPlayer mediaPlayer;
     private MediaView mediaView;
+    private final AudioAnnouncementService audioService = new AudioAnnouncementService();
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Tzu Chi Clinic Room System");
@@ -265,7 +267,7 @@ public class ClinicRoomSystem extends Application {
                     if (currentPatient != null) {
                         Platform.runLater(() -> {
                             updateLatestNumber(column, currentPatient);
-
+                            audioService.announceNumber(currentPatient);
                             // Then fetch updated queue
                             String queueEndpoint = BASE_URL + "/row" + column + "/clinic";
                             sendHttpRequest(queueEndpoint, "GET", queueResponse -> {
@@ -591,6 +593,7 @@ public class ClinicRoomSystem extends Application {
 
             mediaPlayer.setAutoPlay(true);
             mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE); // Loop the video
+            mediaPlayer.setMute(true);  // Add this line to mute the video
 
             mediaPlayer.setOnError(() -> {
                 String errorMessage = mediaPlayer.getError().getMessage();
@@ -612,6 +615,7 @@ public class ClinicRoomSystem extends Application {
             mediaPlayer.stop();
             mediaPlayer.dispose();
         }
+        audioService.stop();
     }
     public static void main(String[] args) {
         launch(args);
