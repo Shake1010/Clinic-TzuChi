@@ -15,9 +15,9 @@ public class AudioAnnouncementService {
     private double playbackSpeed = 1.3;
 
     private static final double TRIM_END_THAI = 0.2;
-    private static final double TRIM_END_ENGLISH = 0.2;
-    private static final double GAP_THAI = 0.15;
-    private static final double GAP_ENGLISH = 0.1;
+    private static final double TRIM_END_ENGLISH = 0.8;
+    private static final double GAP_THAI = 0;
+    private static final double GAP_ENGLISH = 0;
     private static final double GAP_BETWEEN_LANGUAGES = 1.0;
 
     private static class AudioItem {

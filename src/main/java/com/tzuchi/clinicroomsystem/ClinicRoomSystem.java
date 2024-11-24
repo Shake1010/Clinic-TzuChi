@@ -28,6 +28,8 @@ import com.tzuchi.clinicroomsystem.AudioAnnouncementService;
 
 public class ClinicRoomSystem extends Application {
     private static final String BASE_URL = "http://localhost:8080/api";
+    private Stage primaryStage;
+    //private static final String BASE_URL = "http://172.104.124.175:8888/TzuChiQueueingSystem-0.0.1-SNAPSHOT/api";
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -41,8 +43,13 @@ public class ClinicRoomSystem extends Application {
     private final AudioAnnouncementService audioService = new AudioAnnouncementService();
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Tzu Chi Clinic Room System");
 
+
+        this.primaryStage = primaryStage;
+        primaryStage.setTitle("Tzu Chi Clinic Room System");
+        showLoginScene();
+    }
+    private void showMainScene() {
         // Main horizontal layout
         HBox mainLayout = new HBox(10);
         mainLayout.setPadding(new Insets(10));
@@ -113,6 +120,69 @@ public class ClinicRoomSystem extends Application {
         primaryStage.show();
 
         startPeriodicUpdates();
+    }
+    private void showLoginScene() {
+        VBox loginLayout = new VBox(10);
+        loginLayout.setPadding(new Insets(10));
+        loginLayout.setAlignment(Pos.CENTER);
+
+        Label titleLabel = new Label("Login");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 20));
+
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Username");
+
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password");
+
+        Button loginButton = new Button("Login");
+        Label messageLabel = new Label();
+        messageLabel.setStyle("-fx-text-fill: red;");
+
+        loginButton.setOnAction(e -> authenticateUser(usernameField.getText(), passwordField.getText(), messageLabel));
+
+        loginLayout.getChildren().addAll(titleLabel, usernameField, passwordField, loginButton, messageLabel);
+
+        Scene loginScene = new Scene(loginLayout, 300, 200);
+        primaryStage.setScene(loginScene);
+        primaryStage.show();
+    }
+    private void authenticateUser(String username, String password, Label messageLabel) {
+        if (username.isEmpty() || password.isEmpty()) {
+            messageLabel.setText("Please fill in both fields.");
+            return;
+        }
+
+        String endpoint = BASE_URL + "/auth/login";
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("username", username);
+        requestBody.put("password", password);
+
+        try {
+            String jsonBody = OBJECT_MAPPER.writeValueAsString(requestBody);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(endpoint))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+
+            HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(HttpResponse::body)
+                    .thenAccept(responseBody -> {
+                        if (responseBody.equalsIgnoreCase("Login Successful")) {
+                            Platform.runLater(this::showMainScene); // Show main scene on successful login
+                        } else {
+                            Platform.runLater(() -> messageLabel.setText("Invalid username or password."));
+                        }
+                    })
+                    .exceptionally(e -> {
+                        Platform.runLater(() -> messageLabel.setText("Error connecting to server."));
+                        return null;
+                    });
+        } catch (Exception e) {
+            messageLabel.setText("Error: " + e.getMessage());
+        }
     }
 
     private VBox createQueueDisplay(String column) {
