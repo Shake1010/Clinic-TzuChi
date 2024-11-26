@@ -105,12 +105,12 @@ public class ClinicRoomSystem extends Application {
         // Add keyboard event handling
         scene.setOnKeyPressed(event -> {
             switch (event.getCode()) {
-                case NUMPAD2 -> callNumber("2");
-                case NUMPAD5 -> callNumber("5");
-                case NUMPAD8 -> callNumber("8");
-                case NUMPAD1 -> returnNumber("1");
-                case NUMPAD4 -> returnNumber("4");
-                case NUMPAD7 -> returnNumber("7");
+                case NUMPAD2, DIGIT2 -> callNumber("2");
+                case NUMPAD5, DIGIT5 -> callNumber("5");
+                case NUMPAD8, DIGIT8 -> callNumber("8");
+                case NUMPAD1, DIGIT1 -> returnNumber("1");
+                case NUMPAD4, DIGIT4 -> returnNumber("4");
+                case NUMPAD7, DIGIT7 -> returnNumber("7");
                 default -> {}
             }
         });
