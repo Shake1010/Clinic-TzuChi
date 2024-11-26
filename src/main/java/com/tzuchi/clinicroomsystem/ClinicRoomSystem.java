@@ -27,9 +27,9 @@ import javafx.stage.FileChooser;
 import com.tzuchi.clinicroomsystem.AudioAnnouncementService;
 
 public class ClinicRoomSystem extends Application {
-    private static final String BASE_URL = "http://localhost:8080/api";
+    //private static final String BASE_URL = "http://localhost:8080/api";
     private Stage primaryStage;
-    //private static final String BASE_URL = "http://172.104.124.175:8888/TzuChiQueueingSystem-0.0.1-SNAPSHOT/api";
+    private static final String BASE_URL = "http://172.104.124.175:8888/TzuChiQueueingSystem-0.0.1-SNAPSHOT/api";
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -91,7 +91,7 @@ public class ClinicRoomSystem extends Application {
         mediaView.setPreserveRatio(true);
 
         // Load video directly with path
-        loadAndPlayVideo("C:\\Users\\tina_\\Desktop\\TzuChiVideo\\【名人蔬食】甘佳鑫 茹素的力量.mp4");  // Replace this with your actual video path
+        //loadAndPlayVideo("C:\\Users\\tina_\\Desktop\\TzuChiVideo\\【名人蔬食】甘佳鑫 茹素的力量.mp4");  // Replace this with your actual video path
 
         // Add components to video section
         videoSection.getChildren().add(mediaView);

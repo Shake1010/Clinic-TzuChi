@@ -7,6 +7,9 @@ module com.tzuchi.clinicroomsystem {
     requires com.fasterxml.jackson.databind;
     requires javafx.media;
 
+
+    requires transitive javafx.base;
+
     exports com.tzuchi.clinicroomsystem;
     
 }
