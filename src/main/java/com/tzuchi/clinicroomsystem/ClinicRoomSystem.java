@@ -12,6 +12,8 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import javafx.stage.Screen;
+
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -50,59 +52,62 @@ public class ClinicRoomSystem extends Application {
         showLoginScene();
     }
     private void showMainScene() {
-        // Main horizontal layout
-        HBox mainLayout = new HBox(10);
-        mainLayout.setPadding(new Insets(10));
+        // Get screen dimensions
+        javafx.geometry.Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+
+        // Main horizontal layout with proportional spacing
+        HBox mainLayout = new HBox();
+        mainLayout.setSpacing(screenBounds.getWidth() * 0.01); // 1% of screen width for spacing
+        mainLayout.setPadding(new Insets(screenBounds.getHeight() * 0.01)); // 1% of screen height for padding
         mainLayout.setStyle("-fx-background-color: white;");
 
-        // Left section for queues
-        VBox queuesSection = new VBox(10);
-        queuesSection.setPrefWidth(800);
+        // Left section for queues with proportional width
+        VBox queuesSection = new VBox(screenBounds.getHeight() * 0.01); // 1% of screen height for spacing
+        queuesSection.prefWidthProperty().bind(mainLayout.widthProperty().multiply(0.5)); // 50% of main layout
         queuesSection.setMaxHeight(Double.MAX_VALUE);
 
         // Queue displays container
-        HBox queueDisplaysContainer = new HBox(5);
+        HBox queueDisplaysContainer = new HBox(screenBounds.getWidth() * 0.005); // 0.5% of screen width spacing
         queueDisplaysContainer.setAlignment(Pos.TOP_CENTER);
 
-        // Add queue displays
+        // Add queue displays - note this uses 3 columns instead of 4
         String[] columns = {"2", "5", "8"};
         for (String column : columns) {
             VBox queueDisplay = createQueueDisplay(column);
+            queueDisplay.prefWidthProperty().bind(queuesSection.widthProperty().multiply(0.32)); // Each takes ~32% of queue section
             queueDisplays.put(column, queueDisplay);
             queueDisplaysContainer.getChildren().add(queueDisplay);
             HBox.setHgrow(queueDisplay, Priority.ALWAYS);
         }
 
         queuesSection.getChildren().add(queueDisplaysContainer);
+        VBox.setVgrow(queueDisplaysContainer, Priority.ALWAYS);
 
-        // Right section for video
+        // Right section for video with proportional width
         VBox videoSection = new VBox();
-        videoSection.setPrefWidth(800);
+        videoSection.prefWidthProperty().bind(mainLayout.widthProperty().multiply(0.5)); // 50% of main layout
         videoSection.setStyle("""
-    -fx-border-color: #2d5d7b;
-    -fx-border-width: 2;
-    -fx-background-color: #f0f0f0;
-    """);
+        -fx-border-color: #2d5d7b;
+        -fx-border-width: 2;
+        -fx-background-color: #f0f0f0;
+        """);
 
-        // Setup video components
+        // Setup responsive video components
         mediaView = new MediaView();
-        mediaView.setFitWidth(780);
-        mediaView.setFitHeight(870);
+        mediaView.fitWidthProperty().bind(videoSection.widthProperty().multiply(0.95));  // 95% of video section width
+        mediaView.fitHeightProperty().bind(videoSection.heightProperty().multiply(0.95)); // 95% of video section height
         mediaView.setPreserveRatio(true);
 
-        // Load video directly with path
-        //loadAndPlayVideo("C:\\Users\\tina_\\Desktop\\TzuChiVideo\\【名人蔬食】甘佳鑫 茹素的力量.mp4");  // Replace this with your actual video path
-
-        // Add components to video section
+        // Add mediaView to video section
         videoSection.getChildren().add(mediaView);
         videoSection.setAlignment(Pos.CENTER);
 
+        // Add both sections to main layout
         mainLayout.getChildren().addAll(queuesSection, videoSection);
         HBox.setHgrow(videoSection, Priority.ALWAYS);
 
-        Scene scene = new Scene(mainLayout, 1600, 900);
-
-        // Add keyboard event handling
+        // Create scene and add keyboard handling
+        Scene scene = new Scene(mainLayout);
         scene.setOnKeyPressed(event -> {
             switch (event.getCode()) {
                 case NUMPAD2, DIGIT2 -> callNumber("2");
@@ -115,10 +120,14 @@ public class ClinicRoomSystem extends Application {
             }
         });
 
-        primaryStage.setMaximized(true);
+        // Configure stage
+        primaryStage.setMinWidth(1024); // Minimum width to ensure readability
+        primaryStage.setMinHeight(768); // Minimum height to ensure readability
+        primaryStage.setMaximized(true); // Start maximized
         primaryStage.setScene(scene);
         primaryStage.show();
 
+        // Start periodic updates
         startPeriodicUpdates();
     }
     private void showLoginScene() {
