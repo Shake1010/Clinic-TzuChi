@@ -12,9 +12,9 @@ public class AudioAnnouncementService {
     private Queue<AudioItem> audioQueue = new LinkedList<>();
     private boolean isPlaying = false;
     private MediaPlayer currentPlayer;
-    private double playbackSpeed = 1.3;
+    private double playbackSpeed = 1;
 
-    private static final double TRIM_END_THAI = 0.2;
+    private static final double TRIM_END_THAI = 0.6;
     private static final double TRIM_END_ENGLISH = 0.8;
     private static final double GAP_THAI = 0;
     private static final double GAP_ENGLISH = 0;
@@ -41,9 +41,8 @@ public class AudioAnnouncementService {
         thaiSequence.add(String.format("%s\\Thai-word\\queue number.mp3", BASE_PATH));
         thaiSequence.add(String.format("%s\\Category\\Category%s.mp3", BASE_PATH, category));
         addThaiNumberToSequence(thaiSequence, number);
-        thaiSequence.add(String.format("%s\\Thai-word\\please come to the.mp3", BASE_PATH));
-        thaiSequence.add(String.format("%s\\Thai-word\\clinic.mp3", BASE_PATH));
-        thaiSequence.add(String.format("%s\\Thai-word\\room.mp3", BASE_PATH));
+        thaiSequence.add(String.format("%s\\Thai-word\\please come to the clinic room.mp3", BASE_PATH));
+
         queueAudioSequence(thaiSequence, true);
 
         // Queue English announcement
@@ -51,9 +50,8 @@ public class AudioAnnouncementService {
         englishSequence.add(String.format("%s\\Words\\queue number.mp3", BASE_PATH));
         englishSequence.add(String.format("%s\\Category\\Category%s.mp3", BASE_PATH, category));
         addEnglishNumberToSequence(englishSequence, number);
-        englishSequence.add(String.format("%s\\Words\\please come to the.mp3", BASE_PATH));
-        englishSequence.add(String.format("%s\\Words\\clinic.mp3", BASE_PATH));
-        englishSequence.add(String.format("%s\\Words\\room.mp3", BASE_PATH));
+        englishSequence.add(String.format("%s\\Words\\please come to the clinic room.mp3", BASE_PATH));
+
         queueAudioSequence(englishSequence, false);
 
         if (!isPlaying) {
