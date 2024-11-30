@@ -13,7 +13,10 @@ import javafx.scene.text.FontWeight;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import javafx.stage.Screen;
-
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -29,9 +32,9 @@ import javafx.stage.FileChooser;
 import com.tzuchi.clinicroomsystem.AudioAnnouncementService;
 
 public class ClinicRoomSystem extends Application {
-    //private static final String BASE_URL = "http://localhost:8080/api";
+    private static final String BASE_URL = "http://localhost:8080/api";
     private Stage primaryStage;
-    private static final String BASE_URL = "http://172.104.124.175:8888/TzuChiQueueingSystem-0.0.1-SNAPSHOT/api";
+//    private static final String BASE_URL = "http://172.104.124.175:8888/TzuChiQueueingSystem-0.0.1-SNAPSHOT/api";
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -51,30 +54,157 @@ public class ClinicRoomSystem extends Application {
         primaryStage.setTitle("Tzu Chi Clinic Room System");
         showLoginScene();
     }
+    private HBox createHeader() {
+        HBox header = new HBox();
+        header.setStyle("-fx-background-color: rgb(22, 38, 74); -fx-padding: 10;");
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setSpacing(15);
+
+        try {
+            // Load and display logo with error handling
+            Image logoImage = new Image(getClass().getResourceAsStream("/images/tzuchi-logo.png"));
+            ImageView logoView = new ImageView(logoImage);
+            logoView.setFitHeight(40);
+            logoView.setFitWidth(40);
+            logoView.setPreserveRatio(true);
+            header.getChildren().add(logoView);
+        } catch (Exception e) {
+            System.err.println("Could not load logo image: " + e.getMessage());
+            // Create a placeholder if image loading fails
+            Label logoPlaceholder = new Label("TC");
+            logoPlaceholder.setStyle("-fx-text-fill: white; -fx-font-size: 20; -fx-font-weight: bold;");
+            header.getChildren().add(logoPlaceholder);
+        }
+
+        // Create title labels
+        VBox titleBox = new VBox(5);
+        Label mainTitle = new Label("CLINIC ROOM");
+        mainTitle.setStyle("-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: white;");
+        Label subTitle = new Label("SYSTEM");
+        subTitle.setStyle("-fx-font-size: 18; -fx-text-fill: white;");
+        titleBox.getChildren().addAll(mainTitle, subTitle);
+
+        header.getChildren().add(titleBox);
+        return header;
+    }
+
+    // Fixed key event handling method
+    private void handleKeyPress(KeyEvent event) {
+        switch (event.getCode()) {
+            case NUMPAD2:
+            case DIGIT2:
+                callNumber("2");
+                break;
+            case NUMPAD5:
+            case DIGIT5:
+                callNumber("5");
+                break;
+            case NUMPAD8:
+            case DIGIT8:
+                callNumber("8");
+                break;
+            case NUMPAD1:
+            case DIGIT1:
+                returnNumber("1");
+                break;
+            case NUMPAD4:
+            case DIGIT4:
+                returnNumber("4");
+                break;
+            case NUMPAD7:
+            case DIGIT7:
+                returnNumber("7");
+                break;
+            default:
+                break;
+        }
+    }
+
+    // Add this method that was missing
+    private VBox createEnhancedStatsContainer(String column) {
+        VBox statsContainer = new VBox(5);
+        statsContainer.setMaxWidth(Double.MAX_VALUE);
+        statsContainer.setPadding(new Insets(5));
+        statsContainer.setStyle("""
+        -fx-background-color: #f5f5f5;
+        -fx-border-color: rgb(22, 38, 74);
+        -fx-border-width: 1 0 0 0;
+    """);
+
+        // Create labels for each statistic type
+        Label leftInClinicLabel = new Label(getInitialLeftInClinicText(column));
+        Label totalRegisteredLabel = new Label("Total Registered: 0");
+        Label totalInQueueLabel = column.equals("2") ? new Label("Total in Queue: 0") : null;
+
+        // Style the labels
+        String labelStyle = """
+        -fx-font-size: 12px;
+        -fx-font-weight: bold;
+        -fx-padding: 3;
+        -fx-background-color: white;
+        -fx-border-color: #cccccc;
+        -fx-border-width: 1;
+        -fx-background-radius: 3;
+        -fx-border-radius: 3;
+    """;
+
+        leftInClinicLabel.setStyle(labelStyle);
+        totalRegisteredLabel.setStyle(labelStyle);
+        if (totalInQueueLabel != null) {
+            totalInQueueLabel.setStyle(labelStyle);
+        }
+
+        leftInClinicLabel.setMaxWidth(Double.MAX_VALUE);
+        totalRegisteredLabel.setMaxWidth(Double.MAX_VALUE);
+        if (totalInQueueLabel != null) {
+            totalInQueueLabel.setMaxWidth(Double.MAX_VALUE);
+        }
+
+        statsContainer.getChildren().add(leftInClinicLabel);
+        statsContainer.getChildren().add(totalRegisteredLabel);
+        if (totalInQueueLabel != null) {
+            statsContainer.getChildren().add(totalInQueueLabel);
+        }
+
+        categoryStatsLabels.put(column + "_left", leftInClinicLabel);
+        categoryStatsLabels.put(column + "_total_registered", totalRegisteredLabel);
+        if (totalInQueueLabel != null) {
+            categoryStatsLabels.put(column + "_total_queue", totalInQueueLabel);
+        }
+
+        return statsContainer;
+    }
     private void showMainScene() {
         // Get screen dimensions
         javafx.geometry.Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
 
-        // Main horizontal layout with proportional spacing
+        // Create main vertical layout
+        VBox root = new VBox();
+        root.setStyle("-fx-background-color: white;");
+
+        // Create header
+        HBox header = createHeader();
+
+        // Main content area
         HBox mainLayout = new HBox();
-        mainLayout.setSpacing(screenBounds.getWidth() * 0.01); // 1% of screen width for spacing
-        mainLayout.setPadding(new Insets(screenBounds.getHeight() * 0.01)); // 1% of screen height for padding
+        mainLayout.setSpacing(screenBounds.getWidth() * 0.01);
+        mainLayout.setPadding(new Insets(screenBounds.getHeight() * 0.01));
         mainLayout.setStyle("-fx-background-color: white;");
 
-        // Left section for queues with proportional width
-        VBox queuesSection = new VBox(screenBounds.getHeight() * 0.01); // 1% of screen height for spacing
-        queuesSection.prefWidthProperty().bind(mainLayout.widthProperty().multiply(0.5)); // 50% of main layout
+        // Left section for queues
+        VBox queuesSection = new VBox(screenBounds.getHeight() * 0.01);
+        queuesSection.prefWidthProperty().bind(mainLayout.widthProperty().multiply(0.5));
         queuesSection.setMaxHeight(Double.MAX_VALUE);
 
         // Queue displays container
-        HBox queueDisplaysContainer = new HBox(screenBounds.getWidth() * 0.005); // 0.5% of screen width spacing
+        HBox queueDisplaysContainer = new HBox(screenBounds.getWidth() * 0.005);
         queueDisplaysContainer.setAlignment(Pos.TOP_CENTER);
 
-        // Add queue displays - note this uses 3 columns instead of 4
+        // Add queue displays
         String[] columns = {"2", "5", "8"};
         for (String column : columns) {
-            VBox queueDisplay = createQueueDisplay(column);
-            queueDisplay.prefWidthProperty().bind(queuesSection.widthProperty().multiply(0.32)); // Each takes ~32% of queue section
+            VBox queueDisplay = createEnhancedQueueDisplay(column);
+            queueDisplay.prefWidthProperty().bind(queuesSection.widthProperty().multiply(0.32));
             queueDisplays.put(column, queueDisplay);
             queueDisplaysContainer.getChildren().add(queueDisplay);
             HBox.setHgrow(queueDisplay, Priority.ALWAYS);
@@ -83,52 +213,138 @@ public class ClinicRoomSystem extends Application {
         queuesSection.getChildren().add(queueDisplaysContainer);
         VBox.setVgrow(queueDisplaysContainer, Priority.ALWAYS);
 
-        // Right section for video with proportional width
-        VBox videoSection = new VBox();
-        videoSection.prefWidthProperty().bind(mainLayout.widthProperty().multiply(0.5)); // 50% of main layout
-        videoSection.setStyle("""
-        -fx-border-color: #2d5d7b;
-        -fx-border-width: 2;
-        -fx-background-color: #f0f0f0;
-        """);
+        // Right section for video
+        VBox videoSection = createVideoSection();
+        videoSection.prefWidthProperty().bind(mainLayout.widthProperty().multiply(0.5));
 
-        // Setup responsive video components
-        mediaView = new MediaView();
-        mediaView.fitWidthProperty().bind(videoSection.widthProperty().multiply(0.95));  // 95% of video section width
-        mediaView.fitHeightProperty().bind(videoSection.heightProperty().multiply(0.95)); // 95% of video section height
-        mediaView.setPreserveRatio(true);
-
-        // Add mediaView to video section
-        videoSection.getChildren().add(mediaView);
-        videoSection.setAlignment(Pos.CENTER);
-
-        // Add both sections to main layout
+        // Add sections to main layout
         mainLayout.getChildren().addAll(queuesSection, videoSection);
-        HBox.setHgrow(videoSection, Priority.ALWAYS);
 
-        // Create scene and add keyboard handling
-        Scene scene = new Scene(mainLayout);
-        scene.setOnKeyPressed(event -> {
-            switch (event.getCode()) {
-                case NUMPAD2, DIGIT2 -> callNumber("2");
-                case NUMPAD5, DIGIT5 -> callNumber("5");
-                case NUMPAD8, DIGIT8 -> callNumber("8");
-                case NUMPAD1, DIGIT1 -> returnNumber("1");
-                case NUMPAD4, DIGIT4 -> returnNumber("4");
-                case NUMPAD7, DIGIT7 -> returnNumber("7");
-                default -> {}
-            }
-        });
+        // Add header and main layout to root
+        root.getChildren().addAll(header, mainLayout);
+        VBox.setVgrow(mainLayout, Priority.ALWAYS);
+
+        // Create scene with fixed key event handling
+        Scene scene = new Scene(root);
+        scene.setOnKeyPressed(this::handleKeyPress);  // Fixed event handling
 
         // Configure stage
-        primaryStage.setMinWidth(1024); // Minimum width to ensure readability
-        primaryStage.setMinHeight(768); // Minimum height to ensure readability
-        primaryStage.setMaximized(true); // Start maximized
+        primaryStage.setMinWidth(1024);
+        primaryStage.setMinHeight(768);
+        primaryStage.setMaximized(true);
         primaryStage.setScene(scene);
         primaryStage.show();
 
         // Start periodic updates
         startPeriodicUpdates();
+    }
+    private VBox createEnhancedQueueDisplay(String column) {
+        VBox display = new VBox(0);
+        display.setAlignment(Pos.TOP_CENTER);
+        display.setPadding(new Insets(0));
+        display.setPrefWidth(190);
+        display.setMaxHeight(Double.MAX_VALUE);
+        display.setStyle("""
+        -fx-border-color: rgb(22, 38, 74);
+        -fx-border-width: 1;
+        -fx-border-radius: 5;
+        -fx-background-color: white;
+        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 2);
+    """);
+
+        // Header
+        Label headerLabel = new Label("Column " + column);
+        headerLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        headerLabel.setMaxWidth(Double.MAX_VALUE);
+        headerLabel.setAlignment(Pos.CENTER);
+        headerLabel.setPadding(new Insets(10));
+        headerLabel.setStyle("""
+        -fx-background-color: rgb(22, 38, 74);
+        -fx-text-fill: white;
+        -fx-background-radius: 5 5 0 0;
+    """);
+
+        // Queue list with enhanced styling
+        VBox queueList = new VBox(0);
+        queueList.setAlignment(Pos.TOP_CENTER);
+        queueList.setStyle("-fx-background-color: white;");
+
+        // Create queue items with enhanced styling
+        for (int i = 0; i < 300; i++) {
+            Label lineLabel = new Label("");
+            lineLabel.setMaxWidth(Double.MAX_VALUE);
+            lineLabel.setPrefHeight(40);
+
+            String backgroundColor = i < 4 ? "rgb(240, 247, 255)" : "white";
+            lineLabel.setStyle(String.format("""
+            -fx-border-color: #e0e0e0;
+            -fx-border-width: 0 0 1 0;
+            -fx-padding: 10;
+            -fx-font-size: 16px;
+            -fx-font-weight: bold;
+            -fx-alignment: center;
+            -fx-background-color: %s;
+        """, backgroundColor));
+
+            queueList.getChildren().add(lineLabel);
+        }
+
+        // Scroll pane with custom styling
+        ScrollPane scrollPane = new ScrollPane(queueList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefHeight(600);
+        scrollPane.setStyle("""
+        -fx-background: white;
+        -fx-background-color: white;
+        -fx-border-width: 0;
+        -fx-padding: 0;
+    """);
+
+        // Latest number label with enhanced styling
+        Label latestLabel = createEnhancedLatestLabel();
+        latestNumberLabels.put(column, latestLabel);
+
+        // Statistics container with enhanced styling
+        VBox statsContainer = createEnhancedStatsContainer(column);
+
+        display.getChildren().addAll(headerLabel, scrollPane, latestLabel, statsContainer);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        return display;
+    }
+    private Label createEnhancedLatestLabel() {
+        Label label = new Label("Latest: -");
+        label.setFont(Font.font("System", FontWeight.BOLD, 14));
+        label.setMaxWidth(Double.MAX_VALUE);
+        label.setAlignment(Pos.CENTER);
+        label.setPadding(new Insets(10));
+        label.setStyle("""
+        -fx-background-color: #f8f9fa;
+        -fx-border-color: #e0e0e0;
+        -fx-border-width: 1 0 1 0;
+    """);
+        return label;
+    }
+
+    private VBox createVideoSection() {
+        VBox videoSection = new VBox();
+        videoSection.setStyle("""
+        -fx-border-color: rgb(22, 38, 74);
+        -fx-border-width: 2;
+        -fx-border-radius: 5;
+        -fx-background-color: #f8f9fa;
+        -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 2);
+    """);
+
+        mediaView = new MediaView();
+        mediaView.fitWidthProperty().bind(videoSection.widthProperty().multiply(0.95));
+        mediaView.fitHeightProperty().bind(videoSection.heightProperty().multiply(0.95));
+        mediaView.setPreserveRatio(true);
+
+        videoSection.getChildren().add(mediaView);
+        videoSection.setAlignment(Pos.CENTER);
+
+        return videoSection;
     }
     private void showLoginScene() {
         VBox loginLayout = new VBox(10);
