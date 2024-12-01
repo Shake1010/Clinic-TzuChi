@@ -17,7 +17,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-
+import java.util.Properties;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,6 +39,8 @@ import com.tzuchi.clinicroomsystem.AudioAnnouncementService;
 public class ClinicRoomSystem extends Application {
     private static final String BASE_URL = "http://localhost:8080/api";
     private Stage primaryStage;
+    private static final String CONFIG_FILE = "clinicroom.properties";
+    private Properties configProps;
 //    private static final String BASE_URL = "http://172.104.124.175:8888/TzuChiQueueingSystem-0.0.1-SNAPSHOT/api";
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -52,6 +59,8 @@ public class ClinicRoomSystem extends Application {
 
         this.primaryStage = primaryStage;
         primaryStage.setTitle("Tzu Chi Clinic Room System");
+        loadProperties();
+
         showLoginScene();
     }
     private HBox createHeader() {
@@ -84,10 +93,114 @@ public class ClinicRoomSystem extends Application {
         subTitle.setStyle("-fx-font-size: 18; -fx-text-fill: white;");
         titleBox.getChildren().addAll(mainTitle, subTitle);
 
-        header.getChildren().add(titleBox);
+        // Create settings button
+        Button settingsButton = new Button("Settings");
+        settingsButton.setStyle("""
+        -fx-background-color: #ffffff;
+        -fx-text-fill: rgb(22, 38, 74);
+        -fx-font-weight: bold;
+        -fx-padding: 8 15;
+        -fx-background-radius: 5;
+        -fx-cursor: hand;
+    """);
+
+        // Add hover effect
+        settingsButton.setOnMouseEntered(e ->
+                settingsButton.setStyle("""
+            -fx-background-color: #e0e0e0;
+            -fx-text-fill: rgb(22, 38, 74);
+            -fx-font-weight: bold;
+            -fx-padding: 8 15;
+            -fx-background-radius: 5;
+            -fx-cursor: hand;
+        """)
+        );
+
+        settingsButton.setOnMouseExited(e ->
+                settingsButton.setStyle("""
+            -fx-background-color: #ffffff;
+            -fx-text-fill: rgb(22, 38, 74);
+            -fx-font-weight: bold;
+            -fx-padding: 8 15;
+            -fx-background-radius: 5;
+            -fx-cursor: hand;
+        """)
+        );
+
+        // Add click handler for settings button
+        settingsButton.setOnAction(e -> showSettingsDialog());
+
+        // Create a spacer to push the settings button to the right
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        header.getChildren().addAll(titleBox, spacer, settingsButton);
         return header;
     }
+    private void loadProperties() {
+        configProps = new Properties();
+        File configFile = new File(CONFIG_FILE);
 
+        if (configFile.exists()) {
+            try (FileInputStream in = new FileInputStream(configFile)) {
+                configProps.load(in);
+                System.out.println("Loaded properties file successfully");
+            } catch (IOException e) {
+                System.err.println("Error loading properties: " + e.getMessage());
+            }
+        } else {
+            try {
+                configFile.createNewFile();
+                System.out.println("Created new properties file");
+            } catch (IOException e) {
+                System.err.println("Error creating properties file: " + e.getMessage());
+            }
+        }
+    }
+
+    private void saveProperties() {
+        try (FileOutputStream out = new FileOutputStream(CONFIG_FILE)) {
+            configProps.store(out, "Clinic Room System Settings");
+        } catch (IOException e) {
+            System.err.println("Error saving properties: " + e.getMessage());
+        }
+    }
+    private void showSettingsDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Settings");
+        dialog.setHeaderText("Video Settings");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getButtonTypes().addAll(ButtonType.CLOSE);
+
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(20));
+
+        // Add current video path display
+        String currentVideo = configProps.getProperty("lastVideo", "No video selected");
+        Label currentVideoLabel = new Label("Current video: " +
+                Paths.get(currentVideo).getFileName());
+        currentVideoLabel.setWrapText(true);
+
+        Button selectVideoButton = new Button("Select Video");
+        selectVideoButton.setStyle("""
+        -fx-background-color: rgb(22, 38, 74);
+        -fx-text-fill: white;
+        -fx-padding: 10 20;
+        -fx-background-radius: 5;
+        -fx-cursor: hand;
+    """);
+
+        selectVideoButton.setOnAction(e -> {
+            selectAndPlayVideo();
+            dialog.close();
+        });
+
+        content.getChildren().addAll(currentVideoLabel, selectVideoButton);
+        dialogPane.setContent(content);
+
+        dialog.showAndWait();
+    }
     // Fixed key event handling method
     private void handleKeyPress(KeyEvent event) {
         switch (event.getCode()) {
@@ -226,7 +339,7 @@ public class ClinicRoomSystem extends Application {
 
         // Create scene with fixed key event handling
         Scene scene = new Scene(root);
-        scene.setOnKeyPressed(this::handleKeyPress);  // Fixed event handling
+        scene.setOnKeyPressed(this::handleKeyPress);
 
         // Configure stage
         primaryStage.setMinWidth(1024);
@@ -234,6 +347,25 @@ public class ClinicRoomSystem extends Application {
         primaryStage.setMaximized(true);
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        // Try to load and play the saved video after the UI is shown
+        Platform.runLater(() -> {
+            try {
+                String lastVideoPath = configProps.getProperty("lastVideo");
+                if (lastVideoPath != null && !lastVideoPath.isEmpty()) {
+                    File videoFile = new File(lastVideoPath);
+                    if (videoFile.exists() && videoFile.isFile()) {
+                        loadAndPlayVideo(lastVideoPath);
+                        System.out.println("Successfully loaded video: " + lastVideoPath);
+                    } else {
+                        System.out.println("Saved video file not found: " + lastVideoPath);
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading saved video: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
 
         // Start periodic updates
         startPeriodicUpdates();
@@ -887,13 +1019,17 @@ public class ClinicRoomSystem extends Application {
             mediaView.setMediaPlayer(mediaPlayer);
 
             mediaPlayer.setAutoPlay(true);
-            mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE); // Loop the video
-            mediaPlayer.setMute(true);  // Add this line to mute the video
+            mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+            mediaPlayer.setMute(true);
 
             mediaPlayer.setOnError(() -> {
                 String errorMessage = mediaPlayer.getError().getMessage();
                 showError("Video Error", "Error playing video: " + errorMessage);
             });
+
+            // Save the video path to properties
+            configProps.setProperty("lastVideo", videoPath);
+            saveProperties();
 
             mediaPlayer.play();
 
